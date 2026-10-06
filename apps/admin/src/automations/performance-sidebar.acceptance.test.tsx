@@ -29,7 +29,7 @@ const prepare = (id = 'first', status: 'active' | 'inactive' = 'active') => {
   read(id, status);
   return fakeAdminEndpoint('GET', statsUrl(id), response(id));
 };
-const entries = () => page.getByRole('region', { name: 'Total entries' });
+const entries = () => page.getByRole('region', { name: 'Total runs' });
 const statuses = () => page.getByRole('region', { name: 'Automation status counts' });
 const statusCard = (name: string) => statuses().getByRole('button', { name, exact: true });
 const open = openPerformanceSidebar;
@@ -215,7 +215,7 @@ describe('Performance sidebar data and errors', () => {
     await open();
     await expect.element(statusCard('In progress')).toHaveTextContent('118');
     await expect.element(statusCard('Completed')).toHaveTextContent('1,260');
-    await expect.element(statusCard('Exited early')).toHaveTextContent('54');
+    await expect.element(statusCard('Stopped')).toHaveTextContent('54');
     await expect
       .element(statuses().getByRole('status'))
       .toHaveTextContent('Statistics loaded. 118 in progress, 1,260 completed, 54 exited early.');
@@ -261,19 +261,17 @@ describe('Performance sidebar data and errors', () => {
     expect(statusAnnouncement).toHaveAttribute('aria-atomic', 'true');
     expect(entryAnnouncement).toHaveAttribute('aria-atomic', 'true');
     await expect.element(statusCard('Completed')).not.toHaveTextContent('0');
-    await expect.element(entries().getByRole('status')).toHaveTextContent('Loading total entries');
+    await expect.element(entries().getByRole('status')).toHaveTextContent('Loading total runs');
     finish();
     await expect.element(entries().getByRole('figure')).toBeVisible();
     await expect.element(entries()).not.toHaveTextContent('No entries');
-    for (const name of ['In progress', 'Completed', 'Exited early']) {
+    for (const name of ['In progress', 'Completed', 'Stopped']) {
       await expect.element(statusCard(name)).toHaveTextContent('0');
     }
     await expect
       .element(statuses().getByRole('status'))
       .toHaveTextContent('Statistics loaded. 0 in progress, 0 completed, 0 exited early.');
-    await expect
-      .element(entries().getByRole('status'))
-      .toHaveTextContent('Total entries loaded: 0.');
+    await expect.element(entries().getByRole('status')).toHaveTextContent('Total runs loaded: 0.');
     expect(statuses().getByRole('status').element()).toBe(statusAnnouncement);
     expect(entries().getByRole('status').element()).toBe(entryAnnouncement);
   });
@@ -423,7 +421,7 @@ describe('Performance sidebar layout', () => {
     await close();
     await expect.poll(() => document.querySelector('aside')?.getBoundingClientRect().width).toBe(0);
     const panel = chartElement.closest('aside')!;
-    const cards = ['In progress', 'Completed', 'Exited early'].map((name) =>
+    const cards = ['In progress', 'Completed', 'Stopped'].map((name) =>
       panel.querySelector(`button[aria-label="${name}"]`)!,
     );
     const expectedCardWidths = cards.map((card) => card.getBoundingClientRect().width);
@@ -481,7 +479,7 @@ describe('Performance sidebar layout', () => {
       const expectedWidth = panel.parentElement!.getBoundingClientRect().width;
       await expect.poll(() => panel.getBoundingClientRect().width).toBeCloseTo(expectedWidth, 0);
       expect(panel.scrollWidth).toBe(panel.clientWidth);
-      for (const name of ['In progress', 'Completed', 'Exited early']) {
+      for (const name of ['In progress', 'Completed', 'Stopped']) {
         const card = statusCard(name).element();
         expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
       }
@@ -508,7 +506,7 @@ describe('Performance sidebar layout', () => {
       await expect
         .poll(() => completed.getBoundingClientRect().top > inProgress.getBoundingClientRect().top)
         .toBe(true);
-      for (const name of ['In progress', 'Completed', 'Exited early']) {
+      for (const name of ['In progress', 'Completed', 'Stopped']) {
         const card = statusCard(name).element();
         expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
       }
@@ -529,7 +527,7 @@ describe('Performance sidebar layout', () => {
     });
     await renderAdminApp('/automations/first', flags);
     await open();
-    await expect.element(entries().getByRole('status')).toHaveTextContent('Loading total entries');
+    await expect.element(entries().getByRole('status')).toHaveTextContent('Loading total runs');
     await expect
       .poll(() => document.querySelector('aside')?.getBoundingClientRect().width)
       .toBe(480);
