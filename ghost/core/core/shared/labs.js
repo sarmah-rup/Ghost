@@ -68,6 +68,7 @@ const PRIVATE_FEATURES = [
   'authReact',
   'globalSearchReact',
   'dunningWarnings',
+  'apps',
 ];
 
 module.exports.GA_KEYS = [...GA_FEATURES];
