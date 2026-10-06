@@ -19,4 +19,4 @@ export {
   type ParseManifestResult,
 } from './parse.ts';
 export type { AppManifest, AppSurface, AppSurfaceType } from './schema.ts';
-export { isLocalhost } from './url.ts';
+export { isLocalhost } from './localhost.ts';
