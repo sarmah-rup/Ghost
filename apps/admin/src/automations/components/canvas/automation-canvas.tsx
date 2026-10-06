@@ -707,12 +707,9 @@ const AutomationCanvas: React.FC<AutomationCanvasProps> = ({
     null,
   );
   const automationAnalyticsEnabled = useFeatureFlag('automationAnalytics');
-  const automationsTinybirdSyncEnabled = useFeatureFlag('automationsTinybirdSync');
   const configQuery = useBrowseConfig();
   const canShowPerformance =
-    automationRunAnalyticsEnabled &&
-    automationsTinybirdSyncEnabled &&
-    Boolean(configQuery.data?.config.stats);
+    automationRunAnalyticsEnabled && Boolean(configQuery.data?.config.stats);
   // Flow data arrives after mount. Use its status until the user chooses a panel state.
   const isPerformanceOpen =
     canShowPerformance && (performanceOpenOverride ?? automation?.status === 'active');

@@ -1057,31 +1057,24 @@ describe('AutomationEditor', () => {
     expect(mockUseBrowseAutomationActionLinks).not.toHaveBeenCalled();
   });
 
-  it.each(['automationRunAnalytics', 'automationsTinybirdSync'])(
-    'hides the performance toggle and panel when %s is disabled',
-    (flag) => {
-      mockLabs.current = {
-        automationRunAnalytics: true,
-        automationsTinybirdSync: true,
-        [flag]: false,
-      };
-      mockUseReadAutomation.mockReturnValue({
-        data: { automations: [automationDetail] },
-        isLoading: false,
-        isError: false,
-      });
+  it('hides the performance toggle and panel when run analytics is disabled', () => {
+    mockLabs.current = { automationRunAnalytics: false };
+    mockUseReadAutomation.mockReturnValue({
+      data: { automations: [automationDetail] },
+      isLoading: false,
+      isError: false,
+    });
 
-      renderEditor();
+    renderEditor();
 
-      expect(screen.queryByRole('button', { name: /performance/i })).not.toBeInTheDocument();
-      expect(screen.queryByText('Performance')).not.toBeInTheDocument();
-    },
-  );
+    expect(screen.queryByRole('button', { name: /performance/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Performance')).not.toBeInTheDocument();
+  });
 
   it.each([false, true])(
     'keeps editing without performance when stats are unavailable (config loaded: %s)',
     (loaded) => {
-      mockLabs.current = { automationRunAnalytics: true, automationsTinybirdSync: true };
+      mockLabs.current = { automationRunAnalytics: true };
       mockStats.current = undefined;
       mockStats.loaded = loaded;
       mockUseReadAutomation.mockReturnValue({
@@ -1101,8 +1094,8 @@ describe('AutomationEditor', () => {
     },
   );
 
-  it('opens performance for an active automation when both analytics flags are enabled', () => {
-    mockLabs.current = { automationRunAnalytics: true, automationsTinybirdSync: true };
+  it('opens performance for an active automation when run analytics is enabled', () => {
+    mockLabs.current = { automationRunAnalytics: true };
     mockUseReadAutomation.mockReturnValue({
       data: { automations: [automationDetail] },
       isLoading: false,

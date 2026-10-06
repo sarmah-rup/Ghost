@@ -15,7 +15,7 @@ export const performanceBoot = composeConfigBootOverrides({
 
 export const flags = {
   boot: performanceBoot,
-  labs: { automations: true, automationRunAnalytics: true, automationsTinybirdSync: true },
+  labs: { automations: true, automationRunAnalytics: true },
 };
 const detail = (id: string): AutomationDetail => ({
   id,
