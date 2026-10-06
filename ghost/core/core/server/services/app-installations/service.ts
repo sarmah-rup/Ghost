@@ -3,6 +3,7 @@ import errors from '@tryghost/errors';
 import ObjectId from 'bson-objectid';
 import type { Knex } from 'knex';
 import {
+  checkManifestUrl,
   compareManifests,
   parseManifest,
   type AppManifest,
@@ -100,12 +101,6 @@ function digestOf(serialisedManifest: string): string {
   return createHash('sha256').update(serialisedManifest).digest('hex');
 }
 
-function assertStorableUrl(manifestUrl: string): void {
-  if (manifestUrl.length > MANIFEST_URL_MAX_LENGTH) {
-    throw new errors.ValidationError({ message: 'The app manifest URL is too long.' });
-  }
-}
-
 function isUniqueViolation(err: unknown): boolean {
   const code = (err as { code?: unknown } | null)?.code;
   return (
@@ -176,12 +171,30 @@ export class AppInstallationsService {
   }
 
   /**
+   * Checks the address a manifest is read from before anything is fetched from it, so
+   * Ghost never requests an address it would refuse, and what it stores obeys the same
+   * rules as the URLs inside a manifest.
+   */
+  private checkManifestUrl(manifestUrl: string): void {
+    const problem =
+      manifestUrl.length > MANIFEST_URL_MAX_LENGTH
+        ? `Expected at most ${MANIFEST_URL_MAX_LENGTH} characters`
+        : checkManifestUrl(manifestUrl, this.getManifestRules().allowLocalhost);
+    if (problem) {
+      throw new errors.ValidationError({
+        message: 'The app manifest URL is not valid.',
+        code: 'APP_MANIFEST_URL_INVALID',
+        context: problem,
+      });
+    }
+  }
+
+  /**
    * Validates a manifest and resolves its URLs against `baseUrl`, where it was read from.
    * `manifestUrl` is what gets stored: the address the install link pointed at, which
    * later checks fetch again.
    */
   private load(manifestUrl: string, body: unknown, baseUrl = manifestUrl): LoadedManifest {
-    assertStorableUrl(manifestUrl);
     const parsed = parseManifest(body, { manifestUrl: baseUrl, ...this.getManifestRules() });
     if (!parsed.success) {
       throw new errors.ValidationError({
@@ -197,7 +210,7 @@ export class AppInstallationsService {
   }
 
   private async fetchAndLoad(manifestUrl: string): Promise<LoadedManifest> {
-    assertStorableUrl(manifestUrl);
+    this.checkManifestUrl(manifestUrl);
     const fetched = await this.fetchManifest(manifestUrl);
     return this.load(manifestUrl, fetched.body, fetched.url);
   }
@@ -286,6 +299,7 @@ export class AppInstallationsService {
     context: RequestContext,
     { manifestUrl, manifest }: { manifestUrl: string; manifest: unknown },
   ): Promise<AppInstallation> {
+    this.checkManifestUrl(manifestUrl);
     return this.insert(context, this.load(manifestUrl, manifest));
   }
 

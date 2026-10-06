@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseManifest } from '../../src/manifest/index.ts';
+import { checkManifestUrl, parseManifest } from '../../src/manifest/index.ts';
 import { devOptions, errorsOf, manifest, manifestOf, options } from './helpers.ts';
 
 describe('parseManifest', () => {
@@ -45,6 +45,20 @@ describe('parseManifest', () => {
   });
 
   describe('the manifest URL', () => {
+    it('can be checked before the manifest is fetched', () => {
+      expect(checkManifestUrl('https://podcast.example.com/app.json')).toBeNull();
+      expect(checkManifestUrl('podcast.example.com/app.json')).toBe(
+        'Expected the manifest at a URL',
+      );
+      const withPassword = new URL('https://podcast.example.com/app.json');
+      withPassword.username = 'user';
+      withPassword.password = 'example';
+      expect(checkManifestUrl(withPassword.href)).toBe(
+        'Expected a URL without a username or password for the manifest itself',
+      );
+      expect(checkManifestUrl('http://localhost:8787/app.json', true)).toBeNull();
+    });
+
     it('must be a URL', () => {
       expect(errorsOf(manifest(), { ...options, manifestUrl: '/ghost-app.json' })).toEqual([
         { path: '', message: 'Expected the manifest at a URL' },

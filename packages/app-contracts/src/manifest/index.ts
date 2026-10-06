@@ -12,9 +12,11 @@
 export { compareManifests, type ManifestChange, type ManifestComparison } from './compare.ts';
 export { APP_ID_MAX_LENGTH, isValidAppId } from './id.ts';
 export {
+  checkManifestUrl,
   parseManifest,
   type ManifestError,
   type ParseManifestOptions,
   type ParseManifestResult,
 } from './parse.ts';
 export type { AppManifest, AppSurface, AppSurfaceType } from './schema.ts';
+export { isLocalhost } from './url.ts';

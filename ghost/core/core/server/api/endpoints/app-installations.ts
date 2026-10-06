@@ -1,21 +1,28 @@
+import type { Controller, Frame } from '@tryghost/api-framework';
 import errors from '@tryghost/errors';
 import { actingContext, service } from '../../services/app-installations';
 
-interface Frame {
-  options: {
-    id: string;
-    context: unknown;
-    [key: string]: unknown;
-  };
-  data: Record<string, unknown>;
+interface InstallationOptions {
+  id: string;
+  context: unknown;
+  [key: string]: unknown;
 }
+
+type ReadFrame = Frame<{ options: InstallationOptions }>;
+
+// The framework refuses a body without a non-empty `app_installations` array before any
+// handler runs; what is inside it is checked here.
+type WriteFrame = Frame<{
+  data: { app_installations: Array<Record<string, unknown>> };
+  options: InstallationOptions;
+}>;
 
 /**
  * What a publisher confirms: the manifest URL they reviewed and the digest of the manifest
  * they were shown. The manifest itself never comes from the browser.
  */
-function reviewed(frame: Frame): { manifestUrl: string; digest: string } {
-  const [input] = (frame.data?.app_installations ?? []) as Array<Record<string, unknown>>;
+function reviewed(frame: WriteFrame): { manifestUrl: string; digest: string } {
+  const [input] = frame.data.app_installations;
   const manifestUrl = input?.manifest_url;
   const digest = input?.digest;
   if (typeof manifestUrl !== 'string' || typeof digest !== 'string') {
@@ -44,7 +51,7 @@ const controller = {
     options: ['id'],
     validation: { options: { id: { required: true } } },
     permissions: true,
-    query(frame: Frame) {
+    query(frame: ReadFrame) {
       return service!.read(frame.options.id);
     },
   },
@@ -53,7 +60,7 @@ const controller = {
     statusCode: 201,
     headers: noCacheInvalidation,
     permissions: true,
-    query(frame: Frame) {
+    query(frame: WriteFrame) {
       return service!.create(actingContext(frame.options.context), reviewed(frame));
     },
   },
@@ -65,7 +72,7 @@ const controller = {
     options: ['id'],
     validation: { options: { id: { required: true } } },
     permissions: { method: 'add' },
-    query(frame: Frame) {
+    query(frame: WriteFrame) {
       return service!.approve(
         actingContext(frame.options.context),
         frame.options.id,
@@ -80,10 +87,16 @@ const controller = {
     options: ['id'],
     validation: { options: { id: { required: true } } },
     permissions: true,
-    query(frame: Frame) {
+    query(frame: ReadFrame) {
       return service!.uninstall(actingContext(frame.options.context), frame.options.id);
     },
   },
-};
+} satisfies Controller<{
+  browse: ReadFrame;
+  read: ReadFrame;
+  add: WriteFrame;
+  edit: WriteFrame;
+  destroy: ReadFrame;
+}>;
 
 module.exports = controller;
