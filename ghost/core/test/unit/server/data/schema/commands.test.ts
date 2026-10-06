@@ -139,6 +139,54 @@ describe('schema commands', function () {
     });
   });
 
+  describe('a column pattern', function () {
+    const slug = { type: 'string', maxlength: 191, nullable: false, pattern: '^[a-z_]+$' };
+    const constraint =
+      /constraint `?test_table_slug_check`? check ?\(REGEXP_LIKE\(`slug`, '\^\[a-z_\]\+\$', 'c'\)\)/;
+
+    it('becomes a case-sensitive check constraint when the table is created on MySQL', function () {
+      const knex = createKnex({ client: 'mysql2' });
+      try {
+        assert.match(commands.createTable('test_table', knex, { slug }).toString(), constraint);
+      } finally {
+        knex.destroy();
+      }
+    });
+
+    it('becomes the same constraint when the column is added to a table on MySQL', async function () {
+      const knex = createKnex({ client: 'mysql2' });
+      const statements: string[] = [];
+      const recording = {
+        schema: knex.schema,
+        client: knex.client,
+        raw: async (sql: string) => {
+          statements.push(sql);
+        },
+      };
+      try {
+        await commands.addColumn('test_table', 'slug', recording, slug);
+        assert.ok(
+          statements.some((sql) => constraint.test(sql)),
+          statements.join('\n'),
+        );
+      } finally {
+        knex.destroy();
+      }
+    });
+
+    it('is left out on SQLite', function () {
+      const knex = createKnex({ client: 'better-sqlite3', useNullAsDefault: true });
+      try {
+        assert.doesNotMatch(
+          commands.createTable('test_table', knex, { slug }).toString(),
+          /check/i,
+        );
+      } finally {
+        knex.destroy();
+      }
+    });
+  });
+
   // The database suites run on MySQL only, so this is what covers SQLite, which can only
   // declare a foreign key while creating the table.
   describe('a foreign key over several columns, on SQLite', function () {

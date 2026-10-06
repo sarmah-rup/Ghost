@@ -100,6 +100,38 @@ function addTableColumn(
 }
 
 /**
+ * Holds a column's values to its `pattern` with a CHECK constraint, named after the table
+ * and column, so the rule binds every writer rather than only the code that remembers it.
+ *
+ * MySQL only. SQLite is being removed and its driver here has no regular expression
+ * function, so a pattern on SQLite is held by the code that writes the column alone.
+ *
+ * @param {import('knex').Knex} knex
+ * @param {string} tableName
+ * @param {import('knex').knex.TableBuilder} tableBuilder
+ * @param {string} columnName
+ * @param {object} [columnSpec]
+ */
+function addColumnPattern(
+  knex,
+  tableName,
+  tableBuilder,
+  columnName,
+  columnSpec = schema[tableName][columnName],
+) {
+  if (!Object.hasOwn(columnSpec, 'pattern') || !DatabaseInfo.isMySQL(knex)) {
+    return;
+  }
+  // Built as text because knex drops the bindings of a check added to an existing table.
+  // 'c' matches case-sensitively: left to the collation, which is case-insensitive, [a-z]
+  // would admit capitals too.
+  const predicate = knex.client
+    .raw('REGEXP_LIKE(??, ?, ?)', [columnName, columnSpec.pattern, 'c'])
+    .toQuery();
+  tableBuilder.check(predicate, [], `${tableName}_${columnName}_check`);
+}
+
+/**
  * @param {string} tableName
  * @param {string} column
  * @param {import('knex').Knex} [transaction]
@@ -166,6 +198,7 @@ async function rawWithAlgorithm(transaction, sql, algorithm) {
 async function addColumn(tableName, column, transaction = db.knex, columnSpec, options = {}) {
   const addColumnBuilder = transaction.schema.table(tableName, function (table) {
     addTableColumn(tableName, table, column, columnSpec);
+    addColumnPattern(transaction, tableName, table, column, columnSpec);
   });
 
   // Use the default flow for SQLite because .toSQL() is tricky with SQLite when
@@ -650,7 +683,10 @@ function createTable(table, transaction = db.knex, tableSpec = schema[table]) {
   return transaction.schema.createTable(table, function (t) {
     Object.keys(tableSpec)
       .filter((column) => !column.startsWith('@@'))
-      .forEach((column) => addTableColumn(table, t, column, tableSpec[column]));
+      .forEach((column) => {
+        addTableColumn(table, t, column, tableSpec[column]);
+        addColumnPattern(transaction, table, t, column, tableSpec[column]);
+      });
 
     if (tableSpec['@@INDEXES@@']) {
       tableSpec['@@INDEXES@@'].forEach((index) => {
