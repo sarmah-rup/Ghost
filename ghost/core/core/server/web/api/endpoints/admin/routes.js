@@ -247,8 +247,11 @@ module.exports = function apiRoutes() {
   appsRouter.use(labs.enabledMiddleware('apps'));
   appsRouter.use(appInstallations.availableMiddleware);
 
+  appsRouter.post('/installations/preview', http(api.appInstallationPreviews.add));
   appsRouter.get('/installations', http(api.appInstallations.browse));
+  appsRouter.post('/installations', http(api.appInstallations.add));
   appsRouter.get('/installations/:id', http(api.appInstallations.read));
+  appsRouter.put('/installations/:id', http(api.appInstallations.edit));
   appsRouter.delete('/installations/:id', http(api.appInstallations.destroy));
 
   router.get('/members/:id', mw.authAdminApi, http(api.members.read));
